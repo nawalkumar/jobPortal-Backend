@@ -31,11 +31,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const corsOptions = {
-  // Remove any trailing slashes from the URL
-  origin: "https://job-portal-application-ot68.vercel.app/",
+  origin: [
+    "http://localhost:5173",
+    "https://job-portal-application-ot68.vercel.app"
+  ],
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
 };
 
 app.use(cors(corsOptions));
