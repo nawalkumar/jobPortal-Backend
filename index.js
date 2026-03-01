@@ -32,7 +32,7 @@ const __dirname = path.dirname(__filename);
 
 const corsOptions = {
   // Remove any trailing slashes from the URL
-  origin: "http://jop-portal-frontend.s3-website.ap-south-1.amazonaws.com",
+  origin: "https://job-portal-application-ot68.vercel.app/",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
