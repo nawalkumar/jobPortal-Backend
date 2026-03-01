@@ -14,6 +14,9 @@ import applicationRoute from "./routes/application.route.js";
 // Load cron jobs
 import "./cron/jobScheduler.js";
 
+// ADD THIS: Import sanitizer for testing
+import sanitizeHTML from "./utils/sanitizeHTML.js";
+
 dotenv.config();
 
 const app = express();
@@ -27,14 +30,16 @@ app.use(cookieParser());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// CORS settings
 const corsOptions = {
-  origin: process.env.NODE_ENV === "production"
-    ? [process.env.FRONTEND_URL]
-    : ["http://localhost:5173"],
+  // Remove any trailing slashes from the URL
+  origin: "http://jop-portal-frontend.s3-website.ap-south-1.amazonaws.com",
   credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
+
 app.use(cors(corsOptions));
+
 
 // API routes
 app.get("/api", (req, res) => res.send("Backend is running!"));
@@ -43,34 +48,58 @@ app.use("/api/company", companyRoute);
 app.use("/api/job", jobRoute);
 app.use("/api/application", applicationRoute);
 
-// Serve React frontend in production
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../client/build")));
-
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../client/build", "index.html"));
+// TEST ROUTE: Only in development
+if (process.env.NODE_ENV !== "production") {
+  app.get("/test-sanitize", (req, res) => {
+    const dirty =
+      "<script>alert('xss')</script><p><strong>Hello</strong> <a href='https://example.com'>Link</a></p>";
+    const clean = sanitizeHTML(dirty);
+    res.send(`
+      <div style="font-family: monospace; padding: 20px;">
+        <h2 style="color: green;">Sanitizer Test (Dev Only)</h2>
+        <hr>
+        <p><strong>Dirty HTML:</strong></p>
+        <pre style="background:#f4f4f4; padding:10px; border-radius:5px;">${dirty}</pre>
+        <p><strong>Clean HTML:</strong></p>
+        <pre style="background:#e8f5e9; padding:10px; border-radius:5px;">${clean}</pre>
+        <p>Script tag removed | Safe tags kept</p>
+      </div>
+    `);
   });
 }
 
+// Serve React frontend in production
+// if (process.env.NODE_ENV === "production") {
+//   const buildPath = path.join(__dirname, "../client/build");
+//   app.use(express.static(buildPath));
+
+//   app.get("*", (req, res) => {
+//     res.sendFile(path.join(buildPath, "index.html"));
+//   });
+// } else {
+// Development: Serve Vite/React from frontend/dist
+// const frontendDist = path.join(path.resolve(), "frontend/dist");
+// app.use(express.static(frontendDist));
+
+// app.get("*", (req, res) => {
+//   res.sendFile(path.join(frontendDist, "index.html"));
+// });
+// }
+
 // Start server after DB connection
 const PORT = process.env.PORT || 5001;
-import path from "path";
-
-// Serve static frontend
-app.use(express.static(path.join(path.resolve(), "frontend/dist")));
-
-app.get("*", (req, res) => {
-  res.sendFile(path.join(path.resolve(), "frontend/dist", "index.html"));
-});
 
 connectDB()
   .then(() => {
-    console.log("✅ MongoDB connected...");
+    console.log("MongoDB connected...");
     app.listen(PORT, () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
+      console.log(`Server is running on port ${PORT}`);
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`Test Sanitizer: http://localhost:${PORT}/test-sanitize`);
+      }
     });
   })
   .catch((err) => {
-    console.error("❌ Failed to connect to MongoDB", err);
+    console.error("Failed to connect to MongoDB", err);
     process.exit(1);
   });
